@@ -367,4 +367,3 @@ client.on('messageCreate', (message) =>{
 client.on('ready', () =>{
     console.log('The bot is ready')
 })
-
