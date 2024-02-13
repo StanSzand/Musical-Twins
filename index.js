@@ -419,7 +419,7 @@ function writeFile(content, file) {
 }
 client.on('messageCreate', (message) => {
     //console.log(message.content)!
-    if (!message.content.startsWith(`!m play`)) {
+    if (!message.content.startsWith(`!play`)) {
         message.content = message.content.toLowerCase();
     }
     if (message.author === client.user || message.content.startsWith('.') || message.author.id.startsWith('1075173399342629024')) {
