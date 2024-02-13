@@ -366,6 +366,9 @@ function runCommand(message, command) {
         var index = parseInt(command.replace('remove ', ''));
         removeSong(message, index);
     }
+    else if (command === 'memes') {
+        runCommand(message, 'play https://www.youtube.com/playlist?list=PLYoXHNEbv4vz--SK614bGWbp9MtLu-1FZ');
+    }
 }
 function shuffleArray(arr) {
     for (let i = arr.length - 1; i > 1; i--) {

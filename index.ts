@@ -5,8 +5,7 @@ import ytdl from 'ytdl-core';
 import ytpl from 'ytpl'
 import search from 'youtube-search'
 import * as fs from 'fs'
-import { SpeechClient } from '@google-cloud/speech';
-import {opus} from 'prism-media'
+
 
 
 const WavEncoder = require("wav-encoder");
@@ -366,6 +365,8 @@ function runCommand(message: any, command: string){
     }else if (command.startsWith('remove')){
         var index = parseInt(command.replace('remove ', ''))
         removeSong(message, index)
+    }else if (command === 'memes'){
+        runCommand(message, 'play https://www.youtube.com/playlist?list=PLYoXHNEbv4vz--SK614bGWbp9MtLu-1FZ')
     }
 }
 
