@@ -13,7 +13,7 @@ dotenv.config()
 
 var usersArray:string[] = ['631556720338010143', '387668927418990593'] //Stan + Sean
 var queue:any[] = []
-const player = createAudioPlayer()
+const player = createAudioPlayer() 
 var alreadyplaying = false
 
 
@@ -444,10 +444,10 @@ client.on('messageCreate', (message) =>{
         return
     }
 
-    if(message.content.startsWith('!') && usersArray.includes(message.author.id)){
+    if(message.content.startsWith('!') && !usersArray.includes(message.author.id)){
         runCommand(message, message.content.replace("!", ""))
-    
-    
+    }else if(message.content.startsWith('!h') && usersArray.includes(message.author.id)){
+        runCommand(message, message.content.replace("!h ", ""))
     }
 })
 

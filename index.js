@@ -429,8 +429,11 @@ client.on('messageCreate', (message) => {
         //Do nothing
         return;
     }
-    if (message.content.startsWith('!') && usersArray.includes(message.author.id)) {
+    if (message.content.startsWith('!') && !usersArray.includes(message.author.id)) {
         runCommand(message, message.content.replace("!", ""));
+    }
+    else if (message.content.startsWith('!h') && usersArray.includes(message.author.id)) {
+        runCommand(message, message.content.replace("!h ", ""));
     }
 });
 client.on('ready', () => {
