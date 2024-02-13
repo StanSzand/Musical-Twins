@@ -35,31 +35,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.talk = exports.stablediff = exports.generateImage = void 0;
 const voice_1 = require("@discordjs/voice");
 const discord_js_1 = __importStar(require("discord.js"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const ytdl_core_1 = __importDefault(require("ytdl-core"));
-const gptAI_1 = require("./gptAI");
 const ytpl_1 = __importDefault(require("ytpl"));
 const youtube_search_1 = __importDefault(require("youtube-search"));
 const fs = __importStar(require("fs"));
-const speech_1 = require("@google-cloud/speech");
-const prism_media_1 = require("prism-media");
 const WavEncoder = require("wav-encoder");
 dotenv_1.default.config();
-var working = false;
-var stablediff = false;
-exports.stablediff = stablediff;
-var previousPrompt = '';
-const omniKey = process.env.OMNIKEY;
+var usersArray = ['631556720338010143', '387668927418990593']; //Stan + Sean
 var queue = [];
 const player = (0, voice_1.createAudioPlayer)();
 var alreadyplaying = false;
-const speechClient = new speech_1.SpeechClient({
-    projectId: 'steel-bliss-403523',
-    keyFilename: './dolphin.json',
-});
 //Discord JS
 const client = new discord_js_1.default.Client({
     intents: [
@@ -110,68 +98,6 @@ function talk(text, message) {
             speechSynthesizer = null;
         });
         playAudio(message);
-    });
-}
-exports.talk = talk;
-function record(message) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const channel = message.member.voice.channel;
-        const connection = voiceDiscord.joinVoiceChannel({
-            channelId: channel.id,
-            guildId: message.guildId,
-            adapterCreator: channel.guild.voiceAdapterCreator,
-            selfDeaf: false
-        });
-        const receiver = connection.receiver.subscribe('631556720338010143', { end: { behavior: EndBehaviorType.AfterSilence, duration: 100 } });
-        const decoder = new prism_media_1.opus.Decoder({ frameSize: 960 * 2, channels: 1, rate: 48000 });
-        const stream = receiver.pipe(decoder).pipe(fs.createWriteStream("./test.pcm"));
-        stream.on("finish", () => {
-            console.log('encoding');
-            var wavConverter = require('wav-converter');
-            var fs = require('fs');
-            var path = require('path');
-            var pcmData = fs.readFileSync(path.resolve(__dirname, './test.pcm'));
-            var wavData = wavConverter.encodeWav(pcmData, {
-                numChannels: 1,
-                sampleRate: 48000
-            });
-            fs.writeFileSync(path.resolve(__dirname, './converted.wav'), wavData);
-            console.log('done writing, logging');
-            checkforMela(message);
-        });
-    });
-}
-function checkforMela(message) {
-    var _a;
-    return __awaiter(this, void 0, void 0, function* () {
-        const filename = 'converted.wav';
-        const encoding = 'LINEAR16';
-        const sampleRateHertz = 48000;
-        const languageCode = 'en-US';
-        const config = {
-            encoding: encoding,
-            languageCode: languageCode,
-            enableAutomaticPunctuation: true,
-            sampleRateHertz: sampleRateHertz
-        };
-        const audio = {
-            content: fs.readFileSync(filename).toString('base64'),
-        };
-        const request = {
-            config: config,
-            audio: audio,
-        };
-        // Detects speech in the audio file
-        const [response] = yield speechClient.recognize(request);
-        const transcription = (_a = response.results) === null || _a === void 0 ? void 0 : _a.map(result => result.alternatives)[0];
-        const final = transcription === null || transcription === void 0 ? void 0 : transcription.map(a => a.transcript)[0];
-        console.log(final);
-        if ((final === null || final === void 0 ? void 0 : final.toLocaleLowerCase().startsWith('mella')) || (final === null || final === void 0 ? void 0 : final.toLocaleLowerCase().startsWith('mela')) || (final === null || final === void 0 ? void 0 : final.toLocaleLowerCase().startsWith("hey, mela")) || (final === null || final === void 0 ? void 0 : final.toLocaleLowerCase().startsWith("hey mela"))) {
-            (0, gptAI_1.askGpt)(message, final, true);
-        }
-        else if (final != null) {
-            (0, gptAI_1.askGpt)(message, final, true);
-        }
     });
 }
 function startPlay(message, link) {
@@ -310,12 +236,6 @@ function runCommand(message, command) {
             content: `🏓Latency is ${Date.now() - message.createdTimestamp}ms`
         });
     }
-    else if (command === 'reset') {
-        (0, gptAI_1.resetAI)();
-        message.reply({
-            content: "Successfully cleared memory"
-        });
-    }
     else if (command.startsWith('play')) {
         command = command.replace('play ', '');
         if (command.includes('youtube.com') || command.includes('youtu.be')) {
@@ -347,24 +267,6 @@ function runCommand(message, command) {
         message.reply({
             embeds: [helpEmbed]
         });
-    }
-    else if (command.startsWith("AI")) {
-        if (message.author.id === '631556720338010143') {
-            if (stablediff == false) {
-                exports.stablediff = stablediff = true;
-            }
-            else
-                (exports.stablediff = stablediff = false);
-            console.log('Stable Diffusion generation set to ' + stablediff.toString());
-            message.reply({
-                content: 'Stable Diffusion generation set to ' + stablediff.toString()
-            });
-        }
-        else {
-            message.reply({
-                content: "You don't have the permissions to do that"
-            });
-        }
     }
     else if (command === 'queue') {
         try {
@@ -439,13 +341,6 @@ function runCommand(message, command) {
             });
         }
     }
-    else if (command.startsWith('talk')) {
-        command = command.replace('talk ', '');
-        (0, gptAI_1.askGpt)(message, command, true);
-    }
-    else if (command === 'record') {
-        record(message);
-    }
     else if (command === 'shuffle') {
         queue = shuffleArray(queue);
         message.reply({
@@ -464,18 +359,8 @@ function runCommand(message, command) {
     else if (command === 'np') {
         nowPlaying(message);
     }
-    else if (command === 'counter') {
-        var check = fs.readFileSync('itis.txt', 'utf8');
-        message.reply({
-            content: `It is what it is counter: ${check}`
-        });
-    }
     else if (command === 'communism') {
         runCommand(message, 'play https://www.youtube.com/playlist?list=PLEC9z34CbIByfimg9B_9Ti8K4NXrBRH0X');
-    }
-    else if (command.startsWith('gpt')) {
-        command = command.replace('gpt ', '');
-        (0, gptAI_1.askGptNoH)(message, command, false);
     }
     else if (command.startsWith('remove')) {
         var index = parseInt(command.replace('remove ', ''));
@@ -513,7 +398,7 @@ function goTo(index) {
     skipSong();
 }
 function removeSong(message, index) {
-    queue = queue.splice(index - 1, 1);
+    queue.splice(index - 1, 1);
     message.reply({
         content: `Removed the song at ${index}`
     });
@@ -537,129 +422,14 @@ client.on('messageCreate', (message) => {
     if (!message.content.startsWith(`!m play`)) {
         message.content = message.content.toLowerCase();
     }
-    if (message.author === client.user || message.content.startsWith('.')) {
+    if (message.author === client.user || message.content.startsWith('.') || message.author.id.startsWith('1075173399342629024')) {
         //Do nothing
         return;
     }
-    if (message.content.startsWith('!m')) {
-        runCommand(message, message.content.replace("!m ", ""));
+    if (message.content.startsWith('!') && usersArray.includes(message.author.id)) {
+        runCommand(message, message.content.replace("!", ""));
     }
 });
 client.on('ready', () => {
-    (0, gptAI_1.resetAI)();
     console.log('The bot is ready');
 });
-var myUrl = 'http://api.omniinfer.io/v2/txt2img';
-var lastReal = false;
-function generateImage(message, prompt, realism) {
-    return __awaiter(this, void 0, void 0, function* () {
-        previousPrompt = prompt;
-        lastReal = realism;
-        message.channel.sendTyping();
-        console.log(prompt);
-        if (realism) {
-            var model = 'majicmixRealistic_v2';
-        }
-        else {
-            var model = 'meinamix_meinaV6_13129';
-        }
-        var content = `{
-        "prompt": "(masterpiece, best quality:1.2), ${prompt}",
-        "negative_prompt": "worst quality, low quality, monochrome",
-        "model_name": "${model}.safetensors",
-        "sampler_name": "DPM++ 2M Karras",
-        "batch_size": 1,
-        "n_iter": 1,
-        "steps": 20,
-        "enable_hr": true,
-        "hr_scale": 1.8,
-        "denoising_strength": 0.55,
-        "hr_second_pass_steps": 10,
-        "cfg_scale": 7,
-        "seed": -1,
-        "height": 768,
-        "width": 512
-    }`;
-        const response = yield fetch(myUrl, {
-            method: 'POST',
-            body: content,
-            headers: { 'User-Agent': 'Apifox/1.0.0 (https://www.apifox.cn)',
-                'Content-Type': 'application/json',
-                'X-Omni-Key': `${omniKey}` }
-        });
-        const bodyS = yield response.json();
-        console.log(bodyS);
-        const ID = bodyS.data.task_id;
-        console.log(ID);
-        getImage(message, ID);
-    });
-}
-exports.generateImage = generateImage;
-function getImage(message, taskID) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const myURL = 'http://api.omniinfer.io/v2/progress?task_id=' + taskID;
-        setTimeout(function () {
-            return __awaiter(this, void 0, void 0, function* () {
-                try {
-                    message.channel.sendTyping();
-                    const responseImage = yield fetch(myURL, {
-                        method: 'GET',
-                        headers: { 'User-Agent': 'Apifox/1.0.0 (https://www.apifox.cn)',
-                            'X-Omni-Key': `${omniKey}` }
-                    });
-                    const bodyImage = yield responseImage.json();
-                    const imageURL = bodyImage.data.imgs[0];
-                    console.log(imageURL);
-                    message.reply({
-                        content: imageURL
-                    });
-                }
-                catch (_a) {
-                    try {
-                        setTimeout(function () {
-                            return __awaiter(this, void 0, void 0, function* () {
-                                message.channel.sendTyping();
-                                const responseImage = yield fetch(myURL, {
-                                    method: 'GET',
-                                    headers: { 'User-Agent': 'Apifox/1.0.0 (https://www.apifox.cn)',
-                                        'X-Omni-Key': `${omniKey}` }
-                                });
-                                const bodyImage = yield responseImage.json();
-                                const imageURL = bodyImage.data.imgs[0];
-                                console.log(imageURL);
-                                message.reply({
-                                    content: imageURL
-                                });
-                            });
-                        }, 10000);
-                    }
-                    catch (_b) {
-                        try {
-                            message.channel.sendTyping();
-                            setTimeout(function () {
-                                return __awaiter(this, void 0, void 0, function* () {
-                                    const responseImage = yield fetch(myURL, {
-                                        method: 'GET',
-                                        headers: { 'User-Agent': 'Apifox/1.0.0 (https://www.apifox.cn)',
-                                            'X-Omni-Key': `${omniKey}` }
-                                    });
-                                    const bodyImage = yield responseImage.json();
-                                    const imageURL = bodyImage.data.imgs[0];
-                                    console.log(imageURL);
-                                    message.reply({
-                                        content: imageURL
-                                    });
-                                });
-                            }, 10000);
-                        }
-                        catch (_c) {
-                            message.reply({
-                                content: 'Sorry, that image generation took too long to respond - try a different image'
-                            });
-                        }
-                    }
-                }
-            });
-        }, 10000);
-    });
-}
