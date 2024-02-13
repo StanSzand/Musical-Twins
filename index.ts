@@ -1,15 +1,16 @@
 import { PlayerSubscription, createAudioPlayer } from '@discordjs/voice'
 import DiscordJS, { Client, EmbedBuilder, GatewayIntentBits, Guild, VoiceChannel } from 'discord.js'
 import dotenv from 'dotenv'
-import ytdl from 'ytdl-core';
+import ytdl from 'ytdl-core'
 import ytpl from 'ytpl'
 import search from 'youtube-search'
 import * as fs from 'fs'
+const fetch = require('node-fetch');
 
 
 
-const WavEncoder = require("wav-encoder");
 dotenv.config()
+
 
 var usersArray:string[] = ['631556720338010143', '387668927418990593'] //Stan + Sean
 var queue:any[] = []
@@ -27,6 +28,9 @@ const client = new DiscordJS.Client({
         GatewayIntentBits.GuildVoiceStates
     ]
 })
+
+const spotifyID = process.env.CLIENTIDSPOTIFY
+const spotifySECRET = process.env.CLIENTSECRETSPOTIFY
 
 client.login(process.env.TOKEN)
 
@@ -427,26 +431,115 @@ function writeFile(content: string, file: string){
     fs.writeFileSync(file, content)
 }
 
+async function searchSongSpotify(query: any) {
 
-client.on('messageCreate', (message) =>{
-    //console.log(message.content)!
-    if (!message.content.startsWith(`!play`)){
-        message.content = message.content.toLowerCase()
+    const code = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: `grant_type=client_credentials&client_id=${spotifyID}&client_secret=${spotifySECRET}`
+        
+    })
+    const bodyS = await code.json()
+    console.log(bodyS)
+    const token=bodyS.access_token
+    console.log(token)
+    const response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    const data = await response.json();
+    console.log(data)
+    if (data.tracks.items.length > 0) {
+      const song = data.tracks.items[0];
+      console.log(song)
+      return song.external_urls.spotify;
+    } else {
+        console.log('rip')
+      return null;
     }
+  }
+
+client.on('messageCreate', async (message) =>{
+    //console.log(message.content)!
+    // if (!message.content.startsWith(`!play`)){
+    //     message.content = message.content.toLowerCase()
+    // }
 
     if (message.author === client.user || message.content.startsWith('.') || message.author.id.startsWith('1075173399342629024')) {
         //Do nothing
         return
     }
 
-    if(message.content.startsWith('!') && usersArray.includes(message.author.id)){
-        runCommand(message, message.content.replace("!", ""))
-    
-    
+    if(message.content.startsWith('!play') && usersArray.includes(message.author.id)){
+        //runCommand(message, message.content.replace("!", ""))
+        var query = message.content.replace("!play ", ""); // Get the search query from the message
+        //const songUrlSpotify = await searchSongSpotify(query);
+
+        //playSpotify(message, songUrlSpotify)
+        query = query.replace("https://open.spotify.com/playlist/", "")
+        query = query.split("?si")[0]
+        console.log(query)
+        var answer = await getPlaylistItems(message, query)
+        message.reply({
+            content: answer.toString()
+        })
     }
 })
 
+async function getPlaylistItems(message: any, query: string){
+    const code = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: `grant_type=client_credentials&client_id=${spotifyID}&client_secret=${spotifySECRET}`
+        
+    })
+    var songs:string[] = []
+    const bodyS = await code.json()
+    const token=bodyS.access_token
+    const response = await fetch(`https://api.spotify.com/v1/playlists/${query}/tracks`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    const data = await response.json();
+    //console.log(data.items[1].track.artists)
+    //console.log(data)
+    for(let i =0; i < Object.keys(data.items).length; i++){
+        var artists = ''
+        for(let j = 0; j < Object.keys(data.items[i].track.artists).length; j++){
+            if(j>0){artists += ", "}
+            artists += data.items[i].track.artists[j].name + ""
+            //console.log(data.items[i].track.artists[j].name)
+        }
+        
+        var object = artists + " - " + data.items[i].track.name
+        message.reply({
+            content: object.toString()
+        })
+        songs.push(object)
+    }
+    console.log(songs)
+    return songs
+}
 
+async function playSpotify(message: any, songUrl: string){
+    const channel = message.member.voice.channel;
+    if (channel) {
+        const connection = voiceDiscord.joinVoiceChannel({
+            channelId: channel.id,
+            guildId: message.guildId,
+            adapterCreator: channel.guild.voiceAdapterCreator,
+            selfDeaf: false
+        })
+        const dispatcher = createAudioResource(`https://groovy.bot/api/play?source=spotify&track=${songUrl}`);
+        connection.subscribe(player)
+        console.log("test")
+        player.play(dispatcher)
+    }
+}
 
 client.on('ready', () =>{
     console.log('The bot is ready')
