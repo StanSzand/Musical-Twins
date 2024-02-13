@@ -434,7 +434,7 @@ function writeFile(content: string, file: string){
 
 client.on('messageCreate', (message) =>{
     //console.log(message.content)!
-    if (!message.content.startsWith(`!m play`)){
+    if (!message.content.startsWith(`!play`)){
         message.content = message.content.toLowerCase()
     }
 
