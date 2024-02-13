@@ -260,17 +260,12 @@ function runCommand(message: any, command: string){
             const helpEmbed = new EmbedBuilder()
             .setTitle("I see you requested for help, here you are:")
             .setDescription(`Here are the music commands: \n 
-            1. "!p play *link*" \n
-            2. "!p queue" \n
-            3. "!p resume" \n
-            4. "!p skip" \n
-            5. "!p queue" \n
-            6. "!p goto *number* \n
-            **To chat with me, please use #chatting-with-mela, ping me in any other channel or simply reply to my message** \n
-            For image generation please use: \n
-            1. "Can you please generate *prompt here*" - use those for anime styled generations \n
-            2. "Can you please generate real *prompt here*" - use those for realistic generations \n
-            3. "Can you show me what you look like?" - use those for me showing you a picture of me 😉 `)
+            1. "!play *link*" \n
+            2. "!queue" \n
+            3. "!resume" \n
+            4. "!skip" \n
+            5. "!queue" \n
+            6. "!goto *number* \n `)
             .setColor('#78E3CC')
 
             message.reply({
