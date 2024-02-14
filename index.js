@@ -41,8 +41,7 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const ytdl_core_1 = __importDefault(require("ytdl-core"));
 const ytpl_1 = __importDefault(require("ytpl"));
 const youtube_search_1 = __importDefault(require("youtube-search"));
-const fs = __importStar(require("fs"));
-const WavEncoder = require("wav-encoder");
+const fetch = require('node-fetch');
 dotenv_1.default.config();
 var usersArray = ['631556720338010143', '387668927418990593']; //Stan + Sean
 var queue = [];
@@ -58,48 +57,11 @@ const client = new discord_js_1.default.Client({
         discord_js_1.GatewayIntentBits.GuildVoiceStates
     ]
 });
+const spotifyID = process.env.CLIENTIDSPOTIFY;
+const spotifySECRET = process.env.CLIENTSECRETSPOTIFY;
 client.login(process.env.TOKEN);
 const voiceDiscord = require('@discordjs/voice');
 const { createAudioResource, AudioPlayerStatus, joinVoiceChannel, EndBehaviorType, VoiceConnectionStatus } = require('@discordjs/voice');
-function talk(text, message) {
-    return __awaiter(this, void 0, void 0, function* () {
-        var sdk = require("microsoft-cognitiveservices-speech-sdk");
-        var readline = require("readline");
-        var audioFile = "audiofile.wav";
-        // This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
-        const speechConfig = sdk.SpeechConfig.fromSubscription(process.env.AZURETOKEN, process.env.AZUREREGION);
-        speechConfig.speechSynthesisOutputFormat = sdk.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm;
-        const audioConfig = sdk.AudioConfig.fromAudioFileOutput(audioFile);
-        // The language of the voice that speaks.
-        var speechSynthesisVoiceName = "en-US-JaneNeural";
-        var ssml = `<speak version='1.0' xml:lang='en-US' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts'> \r\n \
-        <voice name='${speechSynthesisVoiceName}'> \r\n \
-            <prosody pitch="8%" rate="15%">\r\n \
-            ${text} \r\n \
-            </prosody>\r\n \
-        </voice> \r\n \
-    </speak>`;
-        var speechSynthesizer = new sdk.SpeechSynthesizer(speechConfig, audioConfig);
-        console.log(`SSML to synthesize: \r\n ${ssml}`);
-        console.log(`Synthesize to: ${audioFile}`);
-        yield speechSynthesizer.speakSsmlAsync(ssml, function (result) {
-            if (result.reason === sdk.ResultReason.SynthesizingAudioCompleted) {
-                console.log("SynthesizingAudioCompleted result");
-            }
-            else {
-                console.error("Speech synthesis canceled, " + result.errorDetails +
-                    "\nDid you set the speech resource key and region values?");
-            }
-            speechSynthesizer.close();
-            speechSynthesizer = null;
-        }, function (err) {
-            console.trace("err - " + err);
-            speechSynthesizer.close();
-            speechSynthesizer = null;
-        });
-        playAudio(message);
-    });
-}
 function startPlay(message, link) {
     return __awaiter(this, void 0, void 0, function* () {
         console.log(`Added <${link}> to the queue`);
@@ -122,7 +84,7 @@ function startPlay(message, link) {
                     const playlist = yield (0, ytpl_1.default)(link);
                     const songUrls = playlist.items.map((item) => item.url);
                     for (const songUrl of songUrls) {
-                        const songInfo = yield ytdl_core_1.default.getInfo(songUrl, options);
+                        const songInfo = yield ytdl_core_1.default.getInfo(songUrl);
                         const song = {
                             songNumber: 'null',
                             title: songInfo.videoDetails.title,
@@ -135,7 +97,7 @@ function startPlay(message, link) {
                     }
                 }
                 else {
-                    const songInfo = yield ytdl_core_1.default.getInfo(link, options);
+                    const songInfo = yield ytdl_core_1.default.getInfo(link);
                     const song = {
                         songNumber: 'null',
                         title: songInfo.videoDetails.title,
@@ -145,9 +107,6 @@ function startPlay(message, link) {
                     if (queue.length === 1) {
                         playSong(channel, message, options);
                     }
-                    message.reply({
-                        content: `Added ${link} to the queue 😃`
-                    });
                 }
             }
             catch (error) {
@@ -169,27 +128,6 @@ function searchSong(message, songname) {
         });
         const videoUrl = searchResults.results[0].link;
         startPlay(message, videoUrl);
-    });
-}
-function playAudio(message) {
-    return __awaiter(this, void 0, void 0, function* () {
-        var channel = message.member.voice.channel;
-        if (!channel) {
-            return message.reply("Oh, my sultry lover, you must be in a voice channel to talk with me.");
-        }
-        const connection = voiceDiscord.joinVoiceChannel({
-            channelId: channel.id,
-            guildId: message.guildId,
-            adapterCreator: channel.guild.voiceAdapterCreator,
-            selfDeaf: false,
-        });
-        setTimeout(function () {
-            return __awaiter(this, void 0, void 0, function* () {
-                const dispatcher = createAudioResource('audiofile.wav');
-                connection.subscribe(player);
-                player.play(dispatcher);
-            });
-        }, 1000);
     });
 }
 function playSong(voiceChannel, message, options) {
@@ -257,7 +195,8 @@ function runCommand(message, command) {
             3. "!resume" \n
             4. "!skip" \n
             5. "!queue" \n
-            6. "!goto *number* \n `)
+            6. "!goto *number* \n
+            7. "!remove *number* \n`)
             .setColor('#78E3CC');
         message.reply({
             embeds: [helpEmbed]
@@ -401,33 +340,63 @@ function removeSong(message, index) {
         content: `Removed the song at ${index}`
     });
 }
-function itwit(message, reply) {
-    var check = fs.readFileSync('itis.txt', 'utf8');
-    var newnumber = +check;
-    newnumber++;
-    writeFile(newnumber.toString(), 'itis.txt');
-    if (reply) {
-        message.reply({
-            content: `It is what it is counter: ${newnumber}`
-        });
-    }
-}
-function writeFile(content, file) {
-    fs.writeFileSync(file, content);
-}
-client.on('messageCreate', (message) => {
+client.on('messageCreate', (message) => __awaiter(void 0, void 0, void 0, function* () {
     //console.log(message.content)!
-    if (!message.content.startsWith(`!play`)) {
-        message.content = message.content.toLowerCase();
-    }
+    // if (!message.content.startsWith(`!play`)){
+    //     message.content = message.content.toLowerCase()
+    // }
     if (message.author === client.user || message.content.startsWith('.') || message.author.id.startsWith('1075173399342629024')) {
         //Do nothing
         return;
     }
     if (message.content.startsWith('!') && usersArray.includes(message.author.id)) {
-        runCommand(message, message.content.replace("!", ""));
+        if (message.content.startsWith("!play") && message.content.includes("spotify")) {
+            const query = message.content.replace("!play ", "").replace("https://open.spotify.com/playlist/", "").split("?si")[0];
+            console.log(query);
+            yield getPlaylistItems(message, query);
+            message.reply({
+                content: "Added " + message.content.replace('!play', '') + " to the queue"
+            });
+        }
+        else {
+            runCommand(message, message.content.replace("!", ""));
+        }
     }
-});
+}));
+function getPlaylistItems(message, query) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const code = yield fetch('https://accounts.spotify.com/api/token', {
+            method: 'POST',
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `grant_type=client_credentials&client_id=${spotifyID}&client_secret=${spotifySECRET}`
+        });
+        var songs = [];
+        const bodyS = yield code.json();
+        const token = bodyS.access_token;
+        const response = yield fetch(`https://api.spotify.com/v1/playlists/${query}/tracks`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = yield response.json();
+        //console.log(data.items[1].track.artists)
+        //console.log(data)
+        for (let i = 0; i < Object.keys(data.items).length; i++) {
+            var artists = '';
+            for (let j = 0; j < Object.keys(data.items[i].track.artists).length; j++) {
+                if (j > 0) {
+                    artists += ", ";
+                }
+                artists += data.items[i].track.artists[j].name + "";
+                //console.log(data.items[i].track.artists[j].name)
+            }
+            var object = "play " + artists + " - " + data.items[i].track.name;
+            runCommand(message, object);
+        }
+        console.log(songs);
+    });
+}
 client.on('ready', () => {
     console.log('The bot is ready');
 });
