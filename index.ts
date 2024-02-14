@@ -1,19 +1,20 @@
 import { PlayerSubscription, createAudioPlayer } from '@discordjs/voice'
 import DiscordJS, { Client, EmbedBuilder, GatewayIntentBits, Guild, VoiceChannel } from 'discord.js'
 import dotenv from 'dotenv'
-import ytdl from 'ytdl-core';
+import ytdl from 'ytdl-core'
 import ytpl from 'ytpl'
 import search from 'youtube-search'
 import * as fs from 'fs'
+const fetch = require('node-fetch');
 
 
 
-const WavEncoder = require("wav-encoder");
 dotenv.config()
+
 
 var usersArray:string[] = ['631556720338010143', '387668927418990593'] //Stan + Sean
 var queue:any[] = []
-const player = createAudioPlayer() 
+const player = createAudioPlayer()
 var alreadyplaying = false
 
 
@@ -28,60 +29,13 @@ const client = new DiscordJS.Client({
     ]
 })
 
+const spotifyID = process.env.CLIENTIDSPOTIFY
+const spotifySECRET = process.env.CLIENTSECRETSPOTIFY
+
 client.login(process.env.TOKEN)
 
 const voiceDiscord = require('@discordjs/voice')
 const { createAudioResource, AudioPlayerStatus,  joinVoiceChannel, EndBehaviorType, VoiceConnectionStatus  } = require('@discordjs/voice')
-
-
-
-async function talk(text: string, message: any){
-    var sdk = require("microsoft-cognitiveservices-speech-sdk");
-    var readline = require("readline");
-
-    var audioFile = "audiofile.wav";
-    // This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
-    const speechConfig = sdk.SpeechConfig.fromSubscription(process.env.AZURETOKEN, process.env.AZUREREGION);
-    speechConfig.speechSynthesisOutputFormat = sdk.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm
-    const audioConfig = sdk.AudioConfig.fromAudioFileOutput(audioFile);
-    // The language of the voice that speaks.
-
-
-    var speechSynthesisVoiceName  = "en-US-JaneNeural";  
-
-    var ssml = `<speak version='1.0' xml:lang='en-US' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts'> \r\n \
-        <voice name='${speechSynthesisVoiceName}'> \r\n \
-            <prosody pitch="8%" rate="15%">\r\n \
-            ${text} \r\n \
-            </prosody>\r\n \
-        </voice> \r\n \
-    </speak>`;
-    
-    var speechSynthesizer = new sdk.SpeechSynthesizer(speechConfig, audioConfig);
-
-    console.log(`SSML to synthesize: \r\n ${ssml}`)
-    console.log(`Synthesize to: ${audioFile}`);
-    await speechSynthesizer.speakSsmlAsync(ssml,
-        function (result: { reason: any; errorDetails: string }) {
-      if (result.reason === sdk.ResultReason.SynthesizingAudioCompleted) {
-        console.log("SynthesizingAudioCompleted result");
-      } else {
-        console.error("Speech synthesis canceled, " + result.errorDetails +
-            "\nDid you set the speech resource key and region values?");
-      }
-      speechSynthesizer.close();
-      speechSynthesizer = null;
-    },
-        function (err: string) {
-      console.trace("err - " + err);
-      speechSynthesizer.close();
-      speechSynthesizer = null;
-    });
-    playAudio(message)
-}
-
-
-
 
 
 async function startPlay(message: any, link: string){
@@ -108,7 +62,7 @@ async function startPlay(message: any, link: string){
                 const songUrls = playlist.items.map((item) => item.url);
 
                 for (const songUrl of songUrls) {
-                    const songInfo = await ytdl.getInfo(songUrl, options);
+                    const songInfo = await ytdl.getInfo(songUrl);
                     const song = {
                         songNumber: 'null', 
                         title: songInfo.videoDetails.title,
@@ -122,7 +76,7 @@ async function startPlay(message: any, link: string){
                 
             }else{
 
-                const songInfo = await ytdl.getInfo(link, options)
+                const songInfo = await ytdl.getInfo(link)
                 
                 const song = {
                     songNumber: 'null', 
@@ -134,10 +88,6 @@ async function startPlay(message: any, link: string){
                 if (queue.length === 1) {
                     playSong(channel, message, options)
                 }
-
-                message.reply({
-                    content: `Added ${link} to the queue 😃`
-                })
             }
         }catch(error){
                 message.reply({
@@ -161,32 +111,6 @@ async function searchSong(message: any, songname: string){
     startPlay(message, videoUrl)
     
 }
-
-
-async function playAudio(message: any){
-    var channel = message.member.voice.channel;
-    if (!channel) {
-        return message.reply("Oh, my sultry lover, you must be in a voice channel to talk with me.");
-    }
-    
-    const connection = voiceDiscord.joinVoiceChannel({
-        channelId: channel.id,
-        guildId: message.guildId,
-        adapterCreator: channel.guild.voiceAdapterCreator,
-        selfDeaf: false,
-    })
-    
-
-    setTimeout(async  function(){
-        const dispatcher = createAudioResource('audiofile.wav');
-        connection.subscribe(player)
-        player.play(dispatcher);
-    }, 1000)
-
-
-    
-
-}   
 
 
 
@@ -265,7 +189,8 @@ function runCommand(message: any, command: string){
             3. "!resume" \n
             4. "!skip" \n
             5. "!queue" \n
-            6. "!goto *number* \n `)
+            6. "!goto *number* \n
+            7. "!remove *number* \n`)
             .setColor('#78E3CC')
 
             message.reply({
@@ -394,7 +319,7 @@ function resumeSong() {
 }
 
 function skipSong() {
-    player.stop();
+    player.stop()
 }
 
 function goTo(index: number){
@@ -409,27 +334,11 @@ function removeSong(message: any, index: number){
     })
 }
 
-
-function itwit(message: any, reply: boolean){
-    var check = fs.readFileSync('itis.txt','utf8')
-    var newnumber: number = +check
-    newnumber ++
-    writeFile(newnumber.toString(), 'itis.txt')
-    if(reply){
-        message.reply({
-            content: `It is what it is counter: ${newnumber}`
-        })
-    }
-    
-}
-
-function writeFile(content: string, file: string){
-    fs.writeFileSync(file, content)
-}
-
-
-client.on('messageCreate', (message) =>{
+client.on('messageCreate', async (message) =>{
     //console.log(message.content)!
+    // if (!message.content.startsWith(`!play`)){
+    //     message.content = message.content.toLowerCase()
+    // }
     if (!message.content.startsWith(`!play`) && !message.content.startsWith(`!h play`)){
         message.content = message.content.toLowerCase()
     }
@@ -440,13 +349,63 @@ client.on('messageCreate', (message) =>{
     }
 
     if(message.content.startsWith('!') && !usersArray.includes(message.author.id)){
-        runCommand(message, message.content.replace("!", ""))
+        if(message.content.startsWith("!play") && message.content.includes("spotify")){
+            const query = message.content.replace("!play ", "").replace("https://open.spotify.com/playlist/", "").split("?si")[0]
+            console.log(query)
+            await getPlaylistItems(message, query)
+            message.reply({
+                content: "Added " + message.content.replace('!play', '') + " to the queue"
+            })
+        }else{
+            runCommand(message, message.content.replace("!", ""))
+        }
     }else if(message.content.startsWith('!h') && usersArray.includes(message.author.id)){
-        runCommand(message, message.content.replace("!h ", ""))
+        if(message.content.startsWith("!h play ") && message.content.includes("spotify")){
+            const query = message.content.replace("!h play ", "").replace("https://open.spotify.com/playlist/", "").split("?si")[0]
+            console.log(query)
+            await getPlaylistItems(message, query)
+            message.reply({
+                content: "Added " + message.content.replace('!play', '') + " to the queue"
+            })
+        }else{
+            runCommand(message, message.content.replace("!h", ""))
+        }
     }
 })
 
-
+async function getPlaylistItems(message: any, query: string){
+    const code = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: `grant_type=client_credentials&client_id=${spotifyID}&client_secret=${spotifySECRET}`
+        
+    })
+    var songs:string[] = []
+    const bodyS = await code.json()
+    const token=bodyS.access_token
+    const response = await fetch(`https://api.spotify.com/v1/playlists/${query}/tracks`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    const data = await response.json();
+    //console.log(data.items[1].track.artists)
+    //console.log(data)
+    for(let i =0; i < Object.keys(data.items).length; i++){
+        var artists = ''
+        for(let j = 0; j < Object.keys(data.items[i].track.artists).length; j++){
+            if(j>0){artists += ", "}
+            artists += data.items[i].track.artists[j].name + ""
+            //console.log(data.items[i].track.artists[j].name)
+        }
+        
+        var object = "play " + artists + " - " + data.items[i].track.name
+        runCommand(message, object)
+    }
+    console.log(songs)
+    
+}
 
 client.on('ready', () =>{
     console.log('The bot is ready')
